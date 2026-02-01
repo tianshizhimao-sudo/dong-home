@@ -37,6 +37,14 @@
     header { text-align: center; padding: 16px 0 20px; }
     h1 { font-size: 22px; margin-bottom: 4px; }
     .subtitle { color: var(--muted); font-size: 12px; }
+    .save-status {
+      font-size: 10px;
+      color: var(--success);
+      margin-top: 4px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .save-status.show { opacity: 1; }
     
     .stats-row {
       display: grid;
@@ -63,6 +71,34 @@
       margin-top: 4px;
     }
     
+    .stocktake-reminder {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .stocktake-reminder .text {
+      font-size: 12px;
+      color: var(--accent-light);
+    }
+    .stocktake-reminder .date {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .stocktake-reminder .btn-small {
+      padding: 6px 12px;
+      font-size: 11px;
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+
     .tabs {
       display: flex;
       gap: 6px;
@@ -126,6 +162,7 @@
       gap: 12px;
       border: 1px solid rgba(255,255,255,0.05);
       transition: all 0.2s;
+      position: relative;
     }
     .item.low-stock {
       border-color: var(--warning);
@@ -158,6 +195,11 @@
     }
     .item-meta .suggest { color: var(--accent-light); }
     
+    .item-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .item-qty {
       display: flex;
       align-items: center;
@@ -184,6 +226,23 @@
       font-weight: 700;
       min-width: 24px;
       text-align: center;
+    }
+    .delete-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: all 0.2s;
+    }
+    .delete-btn:hover {
+      opacity: 1;
+      color: var(--danger);
+      background: rgba(239, 68, 68, 0.1);
     }
     
     .add-form {
@@ -245,6 +304,15 @@
       background: var(--success);
       color: white;
     }
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+    .btn-large {
+      padding: 16px 24px;
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
     
     .quick-add {
       display: flex;
@@ -280,6 +348,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
     .shopping-check.checked {
       background: var(--success);
@@ -340,6 +409,33 @@
       font-size: 12px;
       line-height: 1.6;
     }
+    
+    .edit-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+    .edit-modal.hidden { display: none; }
+    .edit-modal-content {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .edit-modal h3 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -347,7 +443,16 @@
     <header>
       <h1>🏠 家庭日常库存</h1>
       <p class="subtitle">Dong & Olivia · 定期采买管理</p>
+      <p class="save-status" id="saveStatus">✅ 已自动保存</p>
     </header>
+
+    <div id="stocktakeReminder" class="stocktake-reminder" style="display: none;">
+      <div>
+        <div class="text">📋 该做 Stocktake 了！</div>
+        <div class="date" id="stocktakeDate"></div>
+      </div>
+      <button class="btn-small" onclick="dismissStocktake()">完成盘点</button>
+    </div>
 
     <div class="stats-row">
       <div class="stat-card">
@@ -365,18 +470,18 @@
     </div>
 
     <div id="alertSection" class="alert-card" style="display: none;">
-      <div class="alert-title">⚠️ 需要采买</div>
+      <div class="alert-title">⚠️ 低库存警告</div>
       <div class="alert-list" id="alertList"></div>
     </div>
 
     <div class="tabs">
-      <button class="tab active" onclick="showTab('medicine')">💊 药品</button>
-      <button class="tab" onclick="showTab('hygiene')">🧴 卫生</button>
-      <button class="tab" onclick="showTab('cleaning')">🧹 清洁</button>
-      <button class="tab" onclick="showTab('kitchen')">🍳 厨房</button>
-      <button class="tab" onclick="showTab('other')">📦 其他</button>
-      <button class="tab" onclick="showTab('shopping')">🛒 采买</button>
-      <button class="tab" onclick="showTab('add')">➕ 添加</button>
+      <button class="tab active" data-tab="medicine" onclick="showTab('medicine', this)">💊 药品</button>
+      <button class="tab" data-tab="hygiene" onclick="showTab('hygiene', this)">🧴 卫生</button>
+      <button class="tab" data-tab="cleaning" onclick="showTab('cleaning', this)">🧹 清洁</button>
+      <button class="tab" data-tab="kitchen" onclick="showTab('kitchen', this)">🍳 厨房</button>
+      <button class="tab" data-tab="other" onclick="showTab('other', this)">📦 其他</button>
+      <button class="tab" data-tab="shopping" onclick="showTab('shopping', this)">🛒 采买</button>
+      <button class="tab" data-tab="add" onclick="showTab('add', this)">➕ 添加</button>
     </div>
 
     <!-- 药品 -->
@@ -436,27 +541,54 @@
 
     <!-- 采买清单 -->
     <div id="shopping" class="tab-content">
+      <button class="btn btn-warning btn-large" onclick="generateShoppingList()">
+        🛒 生成采买清单
+      </button>
       <div class="section">
         <div class="section-title">
-          <span>🛒 采买清单</span>
-          <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px;" onclick="generateShoppingList()">刷新</button>
+          <span>📝 需要购买</span>
+          <span class="section-badge" id="shoppingCount">0</span>
         </div>
         <div id="shoppingList"></div>
       </div>
-      <button class="btn btn-success" onclick="clearChecked()">✅ 清除已购买</button>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-success" style="flex: 1;" onclick="markAllBought()">✅ 全部买齐</button>
+        <button class="btn btn-secondary" style="flex: 1;" onclick="clearChecked()">🔄 清除标记</button>
+      </div>
     </div>
 
     <!-- 添加 -->
     <div id="add" class="tab-content">
       <div class="add-form">
+        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--accent-light);">➕ 添加新物品</h3>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">物品名称</label>
+            <label class="form-label">物品名称 *</label>
             <input type="text" class="form-input" id="itemName" placeholder="例如：Panadol">
           </div>
+        </div>
+        <div class="form-row">
           <div class="form-group small">
-            <label class="form-label">数量</label>
-            <input type="number" class="form-input" id="itemQty" value="1" min="0">
+            <label class="form-label">当前数量</label>
+            <input type="number" class="form-input" id="itemQty" value="0" min="0">
+          </div>
+          <div class="form-group small">
+            <label class="form-label">建议存量</label>
+            <input type="number" class="form-input" id="itemSuggest" value="1" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">单位</label>
+            <select class="form-select" id="itemUnit">
+              <option value="盒">盒</option>
+              <option value="瓶">瓶</option>
+              <option value="包">包</option>
+              <option value="个">个</option>
+              <option value="卷">卷</option>
+              <option value="袋">袋</option>
+              <option value="支">支</option>
+              <option value="片">片</option>
+              <option value="条">条</option>
+            </select>
           </div>
         </div>
         <div class="form-row">
@@ -470,25 +602,6 @@
               <option value="other">📦 其他</option>
             </select>
           </div>
-          <div class="form-group small">
-            <label class="form-label">建议存量</label>
-            <input type="number" class="form-input" id="itemSuggest" value="1" min="1">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">单位</label>
-            <select class="form-select" id="itemUnit">
-              <option value="盒">盒</option>
-              <option value="瓶">瓶</option>
-              <option value="包">包</option>
-              <option value="个">个</option>
-              <option value="卷">卷</option>
-              <option value="袋">袋</option>
-              <option value="支">支</option>
-              <option value="片">片</option>
-            </select>
-          </div>
           <div class="form-group">
             <label class="form-label">存放位置</label>
             <select class="form-select" id="itemLocation">
@@ -497,6 +610,8 @@
               <option value="洗衣房">🧺 洗衣房</option>
               <option value="厨房">🍳 厨房</option>
               <option value="储物间">📦 储物间</option>
+              <option value="客厅">🛋️ 客厅</option>
+              <option value="玄关">🚪 玄关</option>
               <option value="其他">📍 其他</option>
             </select>
           </div>
@@ -511,12 +626,40 @@
 
       <div class="section">
         <div class="section-title">💾 数据管理</div>
-        <div style="display: flex; gap: 10px;">
-          <button class="btn btn-secondary" style="flex: 1;" onclick="exportData()">📤 导出</button>
-          <button class="btn btn-secondary" style="flex: 1;" onclick="importClick()">📥 导入</button>
-          <button class="btn btn-secondary" style="flex: 1; color: var(--danger);" onclick="resetData()">🗑️ 重置</button>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+          <button class="btn btn-secondary" style="flex: 1;" onclick="exportData()">📤 导出数据</button>
+          <button class="btn btn-secondary" style="flex: 1;" onclick="importClick()">📥 导入数据</button>
         </div>
+        <button class="btn btn-secondary" style="width: 100%; color: var(--danger);" onclick="resetData()">🗑️ 重置为默认</button>
         <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑弹窗 -->
+  <div class="edit-modal hidden" id="editModal">
+    <div class="edit-modal-content">
+      <h3>✏️ 编辑物品</h3>
+      <input type="hidden" id="editId">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">物品名称</label>
+          <input type="text" class="form-input" id="editName">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group small">
+          <label class="form-label">数量</label>
+          <input type="number" class="form-input" id="editQty" min="0">
+        </div>
+        <div class="form-group small">
+          <label class="form-label">建议存量</label>
+          <input type="number" class="form-input" id="editSuggest" min="1">
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 16px;">
+        <button class="btn btn-secondary" style="flex: 1;" onclick="closeEditModal()">取消</button>
+        <button class="btn btn-primary" style="flex: 1;" onclick="saveEdit()">保存</button>
       </div>
     </div>
   </div>
@@ -596,7 +739,10 @@
     ];
 
     let inventory = [];
-    let shoppingList = [];
+    let settings = {
+      lastStocktake: null,
+      stocktakeDismissed: null
+    };
 
     // 快速添加按钮
     const quickAddItems = [
@@ -610,8 +756,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       loadData();
+      loadSettings();
       renderQuickAdd();
       renderAll();
+      checkStocktakeReminder();
     });
 
     function loadData() {
@@ -629,8 +777,53 @@
       }
     }
 
+    function loadSettings() {
+      const saved = localStorage.getItem('home-inventory-settings');
+      if (saved) {
+        settings = JSON.parse(saved);
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem('home-inventory-settings', JSON.stringify(settings));
+    }
+
     function saveData() {
       localStorage.setItem('home-inventory', JSON.stringify(inventory));
+      showSaveStatus();
+    }
+
+    function showSaveStatus() {
+      const status = document.getElementById('saveStatus');
+      status.classList.add('show');
+      setTimeout(() => status.classList.remove('show'), 2000);
+    }
+
+    function checkStocktakeReminder() {
+      const today = new Date();
+      const day = today.getDate();
+      const month = today.getMonth();
+      const year = today.getFullYear();
+      
+      // 每月15号提醒
+      if (day >= 15 && day <= 20) {
+        const thisMonth15 = new Date(year, month, 15).toISOString().slice(0, 10);
+        
+        // 如果这个月还没完成盘点
+        if (settings.stocktakeDismissed !== thisMonth15) {
+          document.getElementById('stocktakeReminder').style.display = 'flex';
+          document.getElementById('stocktakeDate').textContent = `本月盘点日: ${month + 1}月15日`;
+        }
+      }
+    }
+
+    function dismissStocktake() {
+      const today = new Date();
+      settings.stocktakeDismissed = new Date(today.getFullYear(), today.getMonth(), 15).toISOString().slice(0, 10);
+      settings.lastStocktake = today.toISOString();
+      saveSettings();
+      document.getElementById('stocktakeReminder').style.display = 'none';
+      showToast('✅ 已完成本月盘点');
     }
 
     function renderQuickAdd() {
@@ -666,17 +859,20 @@
           return `
             <div class="item ${status}">
               <div class="item-icon">${item.icon || '📦'}</div>
-              <div class="item-info">
+              <div class="item-info" onclick="openEditModal(${item.id})" style="cursor: pointer;">
                 <div class="item-name">${item.name}</div>
                 <div class="item-meta">
                   <span class="suggest">建议: ${item.suggest}${item.unit}</span>
                   <span>📍 ${item.location}</span>
                 </div>
               </div>
-              <div class="item-qty">
-                <button class="qty-btn minus" onclick="updateQty(${item.id}, -1)">−</button>
-                <span class="qty-value">${item.qty}</span>
-                <button class="qty-btn plus" onclick="updateQty(${item.id}, 1)">+</button>
+              <div class="item-actions">
+                <div class="item-qty">
+                  <button class="qty-btn minus" onclick="updateQty(${item.id}, -1)">−</button>
+                  <span class="qty-value">${item.qty}</span>
+                  <button class="qty-btn plus" onclick="updateQty(${item.id}, 1)">+</button>
+                </div>
+                <button class="delete-btn" onclick="deleteItem(${item.id})" title="删除">🗑️</button>
               </div>
             </div>
           `;
@@ -695,13 +891,31 @@
     }
 
     function renderAlerts() {
-      const needBuy = inventory.filter(i => i.qty < i.suggest);
+      const lowStock = inventory.filter(i => i.qty > 0 && i.qty < i.suggest);
+      const outOfStock = inventory.filter(i => i.qty === 0);
       const section = document.getElementById('alertSection');
       
-      if (needBuy.length > 0) {
-        document.getElementById('alertList').innerHTML = needBuy.slice(0, 5).map(i => 
-          `${i.icon || '📦'} ${i.name} (有${i.qty}/${i.suggest})`
-        ).join('<br>');
+      if (lowStock.length > 0 || outOfStock.length > 0) {
+        let alertHtml = '';
+        
+        if (outOfStock.length > 0) {
+          alertHtml += '<strong style="color: var(--danger);">❌ 已用完:</strong><br>';
+          alertHtml += outOfStock.slice(0, 5).map(i => 
+            `${i.icon || '📦'} ${i.name}`
+          ).join('、');
+          if (outOfStock.length > 5) alertHtml += ` 等${outOfStock.length}项`;
+          alertHtml += '<br><br>';
+        }
+        
+        if (lowStock.length > 0) {
+          alertHtml += '<strong style="color: var(--warning);">⚠️ 库存不足:</strong><br>';
+          alertHtml += lowStock.slice(0, 5).map(i => 
+            `${i.icon || '📦'} ${i.name} (${i.qty}/${i.suggest})`
+          ).join('、');
+          if (lowStock.length > 5) alertHtml += ` 等${lowStock.length}项`;
+        }
+        
+        document.getElementById('alertList').innerHTML = alertHtml;
         section.style.display = 'block';
       } else {
         section.style.display = 'none';
@@ -711,18 +925,29 @@
     function generateShoppingList() {
       const needBuy = inventory.filter(i => i.qty < i.suggest);
       const list = document.getElementById('shoppingList');
+      const count = document.getElementById('shoppingCount');
+      
+      count.textContent = needBuy.length;
       
       if (needBuy.length === 0) {
-        list.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>库存充足！</p></div>';
+        list.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>库存充足，不需要采买！</p></div>';
         return;
       }
 
-      list.innerHTML = needBuy.map((item, i) => `
-        <div class="shopping-item">
-          <div class="shopping-check" onclick="toggleCheck(this)"></div>
-          <span class="shopping-text">${item.icon || '📦'} ${item.name} (需补${item.suggest - item.qty}${item.unit})</span>
-        </div>
-      `).join('');
+      // 按分类排序
+      const sorted = needBuy.sort((a, b) => a.category.localeCompare(b.category));
+
+      list.innerHTML = sorted.map((item, i) => {
+        const need = item.suggest - item.qty;
+        return `
+          <div class="shopping-item" data-id="${item.id}">
+            <div class="shopping-check" onclick="toggleCheck(this)"></div>
+            <span class="shopping-text">${item.icon || '📦'} ${item.name} <span style="color: var(--warning);">(需补${need}${item.unit})</span></span>
+          </div>
+        `;
+      }).join('');
+      
+      showToast(`📋 生成了 ${needBuy.length} 项采买清单`);
     }
 
     function getStatus(item) {
@@ -738,6 +963,48 @@
       item.qty = Math.max(0, item.qty + delta);
       saveData();
       renderAll();
+    }
+
+    function deleteItem(id) {
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+      
+      if (confirm(`确定删除 "${item.name}" 吗？`)) {
+        inventory = inventory.filter(i => i.id !== id);
+        saveData();
+        renderAll();
+        showToast(`已删除 ${item.name}`);
+      }
+    }
+
+    function openEditModal(id) {
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+      
+      document.getElementById('editId').value = id;
+      document.getElementById('editName').value = item.name;
+      document.getElementById('editQty').value = item.qty;
+      document.getElementById('editSuggest').value = item.suggest;
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.add('hidden');
+    }
+
+    function saveEdit() {
+      const id = parseInt(document.getElementById('editId').value);
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+      
+      item.name = document.getElementById('editName').value.trim() || item.name;
+      item.qty = parseInt(document.getElementById('editQty').value) || 0;
+      item.suggest = parseInt(document.getElementById('editSuggest').value) || 1;
+      
+      saveData();
+      renderAll();
+      closeEditModal();
+      showToast('已保存修改');
     }
 
     function addItem() {
@@ -768,13 +1035,18 @@
       renderAll();
       
       document.getElementById('itemName').value = '';
-      document.getElementById('itemQty').value = '1';
+      document.getElementById('itemQty').value = '0';
       
       showToast(`已添加 ${name}`);
-      showTab('medicine');
     }
 
     function quickAdd(name, cat, suggest, unit, loc) {
+      // 检查是否已存在
+      if (inventory.some(i => i.name.toLowerCase().includes(name.toLowerCase()))) {
+        showToast(`${name} 已存在`, 'warning');
+        return;
+      }
+      
       inventory.push({
         id: Date.now(),
         name,
@@ -795,6 +1067,20 @@
       el.parentElement.querySelector('.shopping-text').classList.toggle('checked');
     }
 
+    function markAllBought() {
+      const items = document.querySelectorAll('.shopping-item');
+      items.forEach(item => {
+        const id = parseInt(item.dataset.id);
+        const invItem = inventory.find(i => i.id === id);
+        if (invItem) {
+          invItem.qty = invItem.suggest; // 补满到建议存量
+        }
+      });
+      saveData();
+      renderAll();
+      showToast('🎉 已全部补货完成！');
+    }
+
     function clearChecked() {
       document.querySelectorAll('.shopping-check.checked').forEach(el => {
         el.classList.remove('checked');
@@ -803,10 +1089,10 @@
       showToast('已清除标记');
     }
 
-    function showTab(tabId) {
+    function showTab(tabId, btn) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
+      btn.classList.add('active');
       document.getElementById(tabId).classList.add('active');
     }
 
@@ -819,14 +1105,20 @@
     }
 
     function exportData() {
-      const data = { inventory, exportedAt: new Date().toISOString() };
+      const data = { 
+        inventory, 
+        settings,
+        exportedAt: new Date().toISOString(),
+        version: '2.0'
+      };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `home-inventory-${new Date().toISOString().slice(0,10)}.json`;
       a.click();
-      showToast('已导出');
+      URL.revokeObjectURL(url);
+      showToast('📤 数据已导出');
     }
 
     function importClick() {
@@ -841,27 +1133,43 @@
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target.result);
-          if (data.inventory) {
+          if (data.inventory && Array.isArray(data.inventory)) {
             inventory = data.inventory;
+            if (data.settings) {
+              settings = data.settings;
+              saveSettings();
+            }
             saveData();
             renderAll();
-            showToast('导入成功');
+            showToast(`📥 成功导入 ${inventory.length} 个物品`);
+          } else {
+            showToast('文件格式不正确', 'warning');
           }
         } catch (err) {
-          showToast('导入失败', 'warning');
+          showToast('导入失败: ' + err.message, 'warning');
         }
       };
       reader.readAsText(file);
+      event.target.value = ''; // 清空以便重新选择
     }
 
     function resetData() {
-      if (confirm('确定重置所有数据？将恢复默认物品列表。')) {
+      if (confirm('⚠️ 确定重置所有数据？\n\n将恢复默认物品列表，所有自定义数据将丢失。')) {
         localStorage.removeItem('home-inventory');
+        localStorage.removeItem('home-inventory-settings');
         loadData();
+        loadSettings();
         renderAll();
-        showToast('已重置');
+        showToast('已恢复默认设置');
       }
     }
+
+    // 关闭弹窗 (点击背景)
+    document.getElementById('editModal').addEventListener('click', (e) => {
+      if (e.target.id === 'editModal') {
+        closeEditModal();
+      }
+    });
   </script>
 </body>
 </html>
