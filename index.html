@@ -642,6 +642,7 @@
         <button class="tab" data-tab="pantry" onclick="showSubTab('food', 'pantry', this)">🥫 储物柜</button>
         <button class="tab" data-tab="spices" onclick="showSubTab('food', 'spices', this)">🧂 调料</button>
         <button class="tab" data-tab="drinks" onclick="showSubTab('food', 'drinks', this)">🍷 饮品</button>
+        <button class="tab" data-tab="fitness" onclick="showSubTab('food', 'fitness', this)">💪 健身</button>
         <button class="tab" data-tab="add" onclick="showSubTab('food', 'add', this)">➕</button>
       </div>
 
@@ -650,6 +651,7 @@
       <div id="food-pantry" class="sub-tab-content"></div>
       <div id="food-spices" class="sub-tab-content"></div>
       <div id="food-drinks" class="sub-tab-content"></div>
+      <div id="food-fitness" class="sub-tab-content"></div>
       <div id="food-add" class="sub-tab-content"></div>
     </div>
 
@@ -683,7 +685,7 @@
         <button class="tab" data-tab="gym" onclick="showSubTab('sports', 'gym', this)">🏋️ 健身</button>
         <button class="tab" data-tab="tennis" onclick="showSubTab('sports', 'tennis', this)">🎾 网球</button>
         <button class="tab" data-tab="football" onclick="showSubTab('sports', 'football', this)">⚽ 足球</button>
-        <button class="tab" data-tab="swim" onclick="showSubTab('sports', 'swim', this)">🏊 游泳</button>
+        <button class="tab" data-tab="ski" onclick="showSubTab('sports', 'ski', this)">🎿 滑雪</button>
         <button class="tab" data-tab="add" onclick="showSubTab('sports', 'add', this)">➕</button>
       </div>
 
@@ -691,7 +693,7 @@
       <div id="sports-gym" class="sub-tab-content"></div>
       <div id="sports-tennis" class="sub-tab-content"></div>
       <div id="sports-football" class="sub-tab-content"></div>
-      <div id="sports-swim" class="sub-tab-content"></div>
+      <div id="sports-ski" class="sub-tab-content"></div>
       <div id="sports-add" class="sub-tab-content"></div>
     </div>
 
@@ -720,6 +722,16 @@
       <button class="back-btn show" onclick="goBack()">← 返回</button>
       <h2 style="font-size: 18px; margin-bottom: 16px;">🛒 采买清单</h2>
       
+      <!-- 临时添加物品 -->
+      <div class="section" style="margin-bottom: 12px;">
+        <div class="section-title">✏️ 临时添加</div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" class="form-input" id="quickAddItem" placeholder="想买的东西..." style="flex: 1;">
+          <button class="btn btn-primary" style="padding: 10px 16px;" onclick="addQuickItem()">+</button>
+        </div>
+        <div id="quickItemsList" style="margin-top: 10px;"></div>
+      </div>
+      
       <button class="btn btn-warning btn-large" onclick="generateShoppingList()">
         🛒 生成采买清单
       </button>
@@ -729,7 +741,7 @@
           🍎 同步到 Apple Reminders + 日历
         </button>
         <p style="font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px;">
-          点击后下载脚本，在 Mac 上运行即可
+          仅包含日用品和食材
         </p>
       </div>
       
@@ -835,7 +847,8 @@
           freezer: { name: '冷冻', icon: '❄️' },
           pantry: { name: '储物柜', icon: '🥫' },
           spices: { name: '调料', icon: '🧂' },
-          drinks: { name: '饮品', icon: '🍷' }
+          drinks: { name: '饮品', icon: '🍷' },
+          fitness: { name: '健身食材', icon: '💪' }
         }
       },
       clothing: {
@@ -856,7 +869,7 @@
           gym: { name: '健身', icon: '🏋️' },
           tennis: { name: '网球', icon: '🎾' },
           football: { name: '足球', icon: '⚽' },
-          swim: { name: '游泳', icon: '🏊' }
+          ski: { name: '滑雪', icon: '🎿' }
         }
       },
       electronics: {
@@ -981,6 +994,20 @@
         { name: '果汁', subCat: 'drinks', qty: 0, suggest: 2, unit: '瓶', location: '冰箱', icon: '🧃' },
         { name: '红酒', subCat: 'drinks', qty: 0, suggest: 2, unit: '瓶', location: '储物间', icon: '🍷' },
         { name: '啤酒', subCat: 'drinks', qty: 0, suggest: 6, unit: '罐', location: '冰箱', icon: '🍺' },
+        
+        // 健身食材
+        { name: '蛋白粉', subCat: 'fitness', qty: 0, suggest: 1, unit: '罐', location: '厨房', icon: '💪' },
+        { name: '鸡胸肉', subCat: 'fitness', qty: 0, suggest: 1, unit: '公斤', location: '冷冻', icon: '🍗' },
+        { name: '希腊酸奶', subCat: 'fitness', qty: 0, suggest: 4, unit: '盒', location: '冰箱', icon: '🥛' },
+        { name: '牛油果', subCat: 'fitness', qty: 0, suggest: 3, unit: '个', location: '冰箱', icon: '🥑' },
+        { name: '三文鱼', subCat: 'fitness', qty: 0, suggest: 2, unit: '块', location: '冷冻', icon: '🐟' },
+        { name: '燕麦', subCat: 'fitness', qty: 0, suggest: 1, unit: '包', location: '储物柜', icon: '🥣' },
+        { name: '香蕉', subCat: 'fitness', qty: 0, suggest: 6, unit: '根', location: '厨房', icon: '🍌' },
+        { name: '杏仁/坚果', subCat: 'fitness', qty: 0, suggest: 1, unit: '包', location: '储物柜', icon: '🥜' },
+        { name: '西兰花', subCat: 'fitness', qty: 0, suggest: 2, unit: '个', location: '冰箱', icon: '🥦' },
+        { name: '糙米', subCat: 'fitness', qty: 0, suggest: 1, unit: '包', location: '储物柜', icon: '🍚' },
+        { name: '能量棒', subCat: 'fitness', qty: 0, suggest: 6, unit: '条', location: '储物柜', icon: '🍫' },
+        { name: 'BCAA/氨基酸', subCat: 'fitness', qty: 0, suggest: 1, unit: '罐', location: '厨房', icon: '💊' },
       ],
       clothing: [
         // Dong
@@ -1062,12 +1089,15 @@
         { name: '护腿板', subCat: 'football', qty: 0, suggest: 1, unit: '双', condition: 'good', icon: '⚽' },
         { name: '足球袜', subCat: 'football', qty: 0, suggest: 2, unit: '双', condition: 'good', icon: '🧦' },
         
-        // 游泳
-        { name: '泳裤', subCat: 'swim', qty: 0, suggest: 2, unit: '条', condition: 'good', icon: '🩱' },
-        { name: '泳镜', subCat: 'swim', qty: 0, suggest: 1, unit: '副', condition: 'good', icon: '🥽' },
-        { name: '泳帽', subCat: 'swim', qty: 0, suggest: 1, unit: '个', condition: 'good', icon: '🏊' },
-        { name: '浴巾 (游泳用)', subCat: 'swim', qty: 0, suggest: 1, unit: '条', condition: 'good', icon: '🛁' },
-        { name: '防水袋', subCat: 'swim', qty: 0, suggest: 1, unit: '个', condition: 'good', icon: '👜' },
+        // 滑雪
+        { name: '滑雪服 (外套)', subCat: 'ski', qty: 0, suggest: 0, unit: '件', condition: 'good', icon: '🧥' },
+        { name: '滑雪裤', subCat: 'ski', qty: 0, suggest: 0, unit: '条', condition: 'good', icon: '👖' },
+        { name: '滑雪手套', subCat: 'ski', qty: 0, suggest: 0, unit: '双', condition: 'good', icon: '🧤' },
+        { name: '滑雪护目镜', subCat: 'ski', qty: 0, suggest: 0, unit: '副', condition: 'good', icon: '🥽' },
+        { name: '滑雪头盔', subCat: 'ski', qty: 0, suggest: 0, unit: '个', condition: 'good', icon: '⛑️' },
+        { name: '滑雪袜', subCat: 'ski', qty: 0, suggest: 2, unit: '双', condition: 'good', icon: '🧦' },
+        { name: '保暖内衣', subCat: 'ski', qty: 0, suggest: 0, unit: '套', condition: 'good', icon: '🧣' },
+        { name: '护脸面罩', subCat: 'ski', qty: 0, suggest: 0, unit: '个', condition: 'good', icon: '🎿' },
       ],
       electronics: [
         // Apple
@@ -1123,6 +1153,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadData();
       loadSettings();
+      checkMonthlyDecrement(); // 检查月度自动减一
       renderAll();
       setTimeout(autoSyncOnLoad, 500);
     });
@@ -1148,6 +1179,38 @@
     function loadSettings() {
       const saved = localStorage.getItem('family-inventory-settings-v2');
       if (saved) settings = JSON.parse(saved);
+    }
+    
+    // 月度自动减一功能（日用品）
+    function checkMonthlyDecrement() {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const lastDecrement = settings.lastMonthlyDecrement || '';
+      
+      // 如果本月还没有执行过减一
+      if (lastDecrement !== currentMonth && inventory.daily) {
+        let decremented = 0;
+        
+        inventory.daily.forEach(item => {
+          // 只对有建议存量且当前数量大于0的物品减一
+          if (item.suggest > 0 && item.qty > 0) {
+            item.qty = Math.max(0, item.qty - 1);
+            decremented++;
+          }
+        });
+        
+        if (decremented > 0) {
+          settings.lastMonthlyDecrement = currentMonth;
+          saveSettings();
+          saveData();
+          console.log(`📉 月度自动减一: ${decremented} 件日用品数量已减少`);
+          
+          // 显示提示
+          setTimeout(() => {
+            showToast(`📉 月度更新: ${decremented}件日用品自动减一`);
+          }, 1500);
+        }
+      }
     }
 
     function saveData() {
@@ -1853,13 +1916,61 @@
     }
 
     // ========== 采买清单 ==========
-    // 全局存储采买清单
+    // 全局存储采买清单和临时物品
     let currentShoppingList = [];
+    let quickItems = JSON.parse(localStorage.getItem('quick-shopping-items') || '[]');
+    
+    // 渲染临时物品列表
+    function renderQuickItems() {
+      const container = document.getElementById('quickItemsList');
+      if (!container) return;
+      
+      if (quickItems.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      container.innerHTML = quickItems.map((item, i) => `
+        <div class="shopping-item" style="padding: 8px 0;">
+          <span class="shopping-text">📝 ${item}</span>
+          <button class="delete-btn" onclick="removeQuickItem(${i})" style="opacity: 1;">✕</button>
+        </div>
+      `).join('');
+    }
+    
+    // 添加临时物品
+    function addQuickItem() {
+      const input = document.getElementById('quickAddItem');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      quickItems.push(text);
+      localStorage.setItem('quick-shopping-items', JSON.stringify(quickItems));
+      input.value = '';
+      renderQuickItems();
+      showToast(`已添加: ${text}`);
+    }
+    
+    // 删除临时物品
+    function removeQuickItem(index) {
+      quickItems.splice(index, 1);
+      localStorage.setItem('quick-shopping-items', JSON.stringify(quickItems));
+      renderQuickItems();
+    }
+    
+    // 清空临时物品
+    function clearQuickItems() {
+      quickItems = [];
+      localStorage.setItem('quick-shopping-items', JSON.stringify(quickItems));
+      renderQuickItems();
+    }
     
     function generateShoppingList() {
       const needBuy = [];
       
-      Object.entries(inventory).forEach(([mainCat, items]) => {
+      // 只包含日用品 (daily) 和食材 (food)
+      ['daily', 'food'].forEach(mainCat => {
+        const items = inventory[mainCat] || [];
         items.forEach(item => {
           if (item.suggest > 0 && item.qty < item.suggest) {
             needBuy.push({ ...item, mainCat, need: item.suggest - item.qty });
@@ -1874,9 +1985,13 @@
       const count = document.getElementById('shoppingCount');
       const appleSection = document.getElementById('appleExportSection');
       
-      count.textContent = needBuy.length;
+      const totalCount = needBuy.length + quickItems.length;
+      count.textContent = totalCount;
       
-      if (needBuy.length === 0) {
+      // 渲染临时物品
+      renderQuickItems();
+      
+      if (totalCount === 0) {
         list.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>库存充足，不需要采买！</p></div>';
         appleSection.style.display = 'none';
         return;
@@ -1888,32 +2003,38 @@
       // 按主分类排序
       needBuy.sort((a, b) => a.mainCat.localeCompare(b.mainCat));
       
-      list.innerHTML = needBuy.map(item => `
-        <div class="shopping-item" data-main="${item.mainCat}" data-id="${item.id}">
-          <div class="shopping-check" onclick="toggleCheck(this)"></div>
-          <span class="shopping-text">
-            ${item.icon || '📦'} ${item.name} 
-            <span style="color: var(--warning);">(需补${item.need}${item.unit || ''})</span>
-          </span>
-        </div>
-      `).join('');
+      let html = '';
       
-      showToast(`📋 生成了 ${needBuy.length} 项采买清单`);
+      // 库存物品
+      if (needBuy.length > 0) {
+        html += needBuy.map(item => `
+          <div class="shopping-item" data-main="${item.mainCat}" data-id="${item.id}">
+            <div class="shopping-check" onclick="toggleCheck(this)"></div>
+            <span class="shopping-text">
+              ${item.icon || '📦'} ${item.name} 
+              <span style="color: var(--warning);">(需补${item.need}${item.unit || ''})</span>
+            </span>
+          </div>
+        `).join('');
+      }
+      
+      list.innerHTML = html || '<div class="empty-state"><p style="font-size: 12px;">库存充足</p></div>';
+      
+      showToast(`📋 生成了 ${totalCount} 项采买清单`);
     }
     
     function syncToApple() {
-      if (currentShoppingList.length === 0) {
+      const totalItems = currentShoppingList.length + quickItems.length;
+      if (totalItems === 0) {
         showToast('没有需要购买的物品', 'warning');
         return;
       }
       
       const today = new Date().toISOString().slice(0, 10);
+      const tz = '+11:00'; // Sydney timezone
       const catNames = {
         daily: '日用品',
-        food: '食材',
-        clothing: '衣物',
-        sports: '运动',
-        electronics: '电子'
+        food: '食材'
       };
       
       // 生成 shell 脚本
@@ -1932,7 +2053,17 @@ remindctl list Shopping --create 2>/dev/null || true
 
 `;
       
-      // 按分类分组
+      // 添加临时物品
+      if (quickItems.length > 0) {
+        script += `# --- 临时添加 ---\n`;
+        quickItems.forEach(item => {
+          const escapedTitle = item.replace(/"/g, '\\"').replace(/\$/g, '\\$');
+          script += `remindctl add --title "📝 ${escapedTitle}" --list Shopping --due today\n`;
+        });
+        script += '\n';
+      }
+      
+      // 按分类分组库存物品
       const grouped = {};
       currentShoppingList.forEach(item => {
         const cat = catNames[item.mainCat] || '其他';
@@ -1944,31 +2075,30 @@ remindctl list Shopping --create 2>/dev/null || true
       Object.entries(grouped).forEach(([cat, items]) => {
         script += `# --- ${cat} ---\n`;
         items.forEach(item => {
-          const title = `${item.name} (${item.need}${item.unit || '个'})`;
-          // 转义特殊字符
+          const title = `${item.icon || '📦'} ${item.name} (${item.need}${item.unit || '个'})`;
           const escapedTitle = title.replace(/"/g, '\\"').replace(/\$/g, '\\$');
           script += `remindctl add --title "${escapedTitle}" --list Shopping --due today\n`;
         });
         script += '\n';
       });
       
-      // 添加日历事件
+      // 添加日历事件 (12:05-12:10 AM)
       script += `
 # ========== 2. 添加日历事件 ==========
 echo ""
 echo "📅 添加购物日历事件..."
 
-# 创建全天事件
+# 创建简短事件 (12:05-12:10 AM)
 gog calendar create primary \\
-  --summary "🛒 购物日 - ${currentShoppingList.length}件待买" \\
-  --from "${today}T00:00:00" \\
-  --to "${today}T23:59:59" \\
+  --summary "🛒 购物提醒 - ${totalItems}件待买" \\
+  --from "${today}T00:05:00${tz}" \\
+  --to "${today}T00:10:00${tz}" \\
   --event-color 6
 
 echo ""
 echo "✅ 完成！"
-echo "   - ${currentShoppingList.length} 个提醒已添加到 Reminders → Shopping"
-echo "   - 1 个全天事件已添加到日历"
+echo "   - ${totalItems} 个提醒已添加到 Reminders → Shopping"
+echo "   - 1 个日历提醒已添加 (12:05 AM)"
 echo ""
 echo "打开 Reminders 查看: open -a Reminders"
 `;
