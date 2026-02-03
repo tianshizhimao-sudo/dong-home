@@ -25,8 +25,8 @@ if [ -z "$DATA" ] || [ "$DATA" = "[]" ]; then
   exit 1
 fi
 
-# 解析需要购买的物品
-ITEMS=$(echo "$DATA" | jq -r '.[0].items | to_entries | map(.value) | flatten | map(select(.suggest > 0 and .qty < .suggest)) | .[] | "\(.name)|\(.suggest - .qty)|\(.unit // "个")"')
+# 解析需要购买的物品（仅日用品和食材）
+ITEMS=$(echo "$DATA" | jq -r '.[0].items | {daily, food} | to_entries | map(.value) | flatten | map(select(.suggest > 0 and .qty < .suggest)) | .[] | "\(.icon // "📦")|\(.name)|\(.suggest - .qty)|\(.unit // "个")"')
 
 if [ -z "$ITEMS" ]; then
   echo "✅ 库存充足，不需要采买！"
@@ -43,9 +43,9 @@ remindctl list Shopping --create 2>/dev/null || true
 
 # 添加到 Reminders
 echo "➕ 添加提醒事项..."
-echo "$ITEMS" | while IFS='|' read -r name need unit; do
+echo "$ITEMS" | while IFS='|' read -r icon name need unit; do
   if [ -n "$name" ]; then
-    title="${name} (${need}${unit})"
+    title="${icon} ${name} (${need}${unit})"
     echo "   - $title"
     remindctl add --title "$title" --list Shopping --due today 2>/dev/null || echo "     ⚠️ 添加失败: $title"
   fi
@@ -53,13 +53,13 @@ done
 
 echo ""
 
-# 添加日历事件
+# 添加日历事件 (12:05-12:10 AM，简短提醒)
 echo "📅 添加日历事件..."
 gog calendar create primary \
-  --summary "🛒 购物日 - ${COUNT}件待买" \
-  --from "${TODAY}T00:00:00" \
-  --to "${TODAY}T23:59:59" \
-  --event-color 6 2>/dev/null && echo "   ✅ 已添加全天购物事件" || echo "   ⚠️ 日历事件添加失败"
+  --summary "🛒 购物提醒 - ${COUNT}件待买" \
+  --from "${TODAY}T00:05:00+11:00" \
+  --to "${TODAY}T00:10:00+11:00" \
+  --event-color 6 2>/dev/null && echo "   ✅ 已添加日历提醒 (12:05 AM)" || echo "   ⚠️ 日历事件添加失败"
 
 echo ""
 echo "===================="
