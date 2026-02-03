@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#1e3a5f">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
   <title>🏠 家庭日常库存</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #0f172a;
@@ -823,6 +824,10 @@
     function saveData() {
       localStorage.setItem('home-inventory', JSON.stringify(inventory));
       showSaveStatus();
+      // 触发云端同步
+      if (typeof scheduleCloudSave === 'function') {
+        scheduleCloudSave();
+      }
     }
 
     function showSaveStatus() {
@@ -831,13 +836,26 @@
       setTimeout(() => status.classList.remove('show'), 2000);
     }
 
-    // ========== 云同步功能 ==========
-    const GIST_ID = '499c234f15f5202703f53c3318b49591';
-    const GIST_FILE = 'inventory.json';
+    // ========== Supabase 云同步功能 ==========
+    const SUPABASE_URL = 'https://syhwaeloljdswsmqkzrx.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5aHdhZWxvbGpkc3dzbXFrenJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDI0NjksImV4cCI6MjA4NTY3ODQ2OX0.wWe9fnjMe0d7PbXfF5s9hdY6rXHB4rCAbMzXhgbyTE8';
+    const FAMILY_ID = 'dong-olivia';
     let isSyncing = false;
+    let supabaseClient = null;
+
+    // 初始化 Supabase 客户端
+    function initSupabase() {
+      if (typeof window.supabase !== 'undefined') {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('✅ Supabase 已初始化');
+        return true;
+      }
+      console.warn('⚠️ Supabase SDK 未加载');
+      return false;
+    }
 
     async function syncCloud() {
-      if (isSyncing) return;
+      if (isSyncing || !supabaseClient) return;
       isSyncing = true;
       
       const btn = document.getElementById('syncBtn');
@@ -848,100 +866,130 @@
       status.textContent = '⏳ 同步中...';
       
       try {
-        // 1. 先从云端拉取数据
-        const cloudData = await fetchFromCloud();
+        // 保存到云端
+        const { data, error } = await supabaseClient
+          .from('inventory')
+          .upsert({
+            family_id: FAMILY_ID,
+            items: inventory,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'family_id' })
+          .select();
         
-        // 2. 比较更新时间，合并数据
-        const localTime = new Date(settings.lastSync || 0).getTime();
-        const cloudTime = new Date(cloudData?.lastUpdated || 0).getTime();
-        
-        if (cloudData && cloudData.items && cloudTime > localTime) {
-          // 云端数据更新，使用云端数据
-          inventory = cloudData.items;
-          localStorage.setItem('home-inventory', JSON.stringify(inventory));
-          renderAll();
-          status.textContent = '⬇️ 已从云端更新';
-        } else {
-          // 本地数据更新或相同，推送到云端
-          await pushToCloud();
-          status.textContent = '⬆️ 已同步到云端';
-        }
+        if (error) throw error;
         
         settings.lastSync = new Date().toISOString();
         saveSettings();
         
         status.className = 'sync-status synced';
+        status.textContent = '✅ 已同步';
         setTimeout(() => {
-          status.textContent = '✅ ' + new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
+          status.textContent = '☁️ ' + new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
         }, 1500);
         
       } catch (err) {
         console.error('Sync error:', err);
         status.className = 'sync-status error';
-        status.textContent = '❌ 同步失败';
+        status.textContent = '❌ ' + (err.message || '同步失败');
       } finally {
         btn.disabled = false;
         isSyncing = false;
       }
     }
 
-    async function fetchFromCloud() {
-      try {
-        const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-        if (!resp.ok) return null;
-        const gist = await resp.json();
-        const content = gist.files[GIST_FILE]?.content;
-        return content ? JSON.parse(content) : null;
-      } catch (e) {
-        console.error('Fetch error:', e);
-        return null;
-      }
-    }
-
-    async function pushToCloud() {
-      const data = {
-        lastUpdated: new Date().toISOString(),
-        items: inventory
-      };
-      
-      // 注意：GitHub Gist API 需要认证才能写入
-      // 这里使用一个简单的 workaround：通过 CORS proxy
-      // 实际使用中建议用后端或 GitHub Actions
-      
-      // 暂时只做读取同步，写入需要手动导出
-      // 自动推送需要 token，这里先保存到 localStorage
-      localStorage.setItem('home-inventory-cloud-pending', JSON.stringify(data));
-      
-      // 显示手动同步提示
-      console.log('Data ready for cloud sync:', data);
-    }
-
     async function autoSyncOnLoad() {
+      if (!initSupabase()) {
+        document.getElementById('syncStatus').textContent = '⚠️ 离线模式';
+        return;
+      }
+      
       const status = document.getElementById('syncStatus');
-      status.textContent = '⏳ 检查更新...';
+      status.textContent = '⏳ 连接云端...';
       status.className = 'sync-status syncing';
       
       try {
-        const cloudData = await fetchFromCloud();
-        const localTime = new Date(settings.lastSync || 0).getTime();
-        const cloudTime = new Date(cloudData?.lastUpdated || 0).getTime();
+        // 从云端获取数据
+        const { data, error } = await supabaseClient
+          .from('inventory')
+          .select('*')
+          .eq('family_id', FAMILY_ID)
+          .single();
         
-        if (cloudData && cloudData.items && cloudTime > localTime) {
-          inventory = cloudData.items;
-          localStorage.setItem('home-inventory', JSON.stringify(inventory));
-          settings.lastSync = new Date().toISOString();
-          saveSettings();
-          renderAll();
-          status.textContent = '⬇️ 已更新';
-          status.className = 'sync-status synced';
-        } else {
-          status.textContent = '✅ 已是最新';
-          status.className = 'sync-status synced';
+        if (error && error.code === 'PGRST116') {
+          // 没有数据，推送本地数据到云端
+          await syncCloud();
+          status.textContent = '⬆️ 已上传';
+        } else if (data) {
+          // 有云端数据，比较更新时间
+          const cloudTime = new Date(data.updated_at).getTime();
+          const localTime = new Date(settings.lastSync || 0).getTime();
+          
+          if (cloudTime > localTime) {
+            inventory = data.items;
+            localStorage.setItem('home-inventory', JSON.stringify(inventory));
+            settings.lastSync = data.updated_at;
+            saveSettings();
+            renderAll();
+            status.textContent = '⬇️ 已从云端更新';
+          } else {
+            status.textContent = '✅ 已是最新';
+          }
         }
+        
+        status.className = 'sync-status synced';
+        
+        // 订阅实时更新
+        subscribeToChanges();
+        
       } catch (e) {
-        status.textContent = '点击同步';
+        console.error('Auto sync error:', e);
+        status.textContent = '⚠️ 离线模式';
         status.className = 'sync-status';
       }
+    }
+
+    function subscribeToChanges() {
+      if (!supabaseClient) return;
+      
+      supabaseClient
+        .channel('inventory-realtime')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'inventory',
+          filter: `family_id=eq.${FAMILY_ID}`
+        }, (payload) => {
+          console.log('📡 实时更新:', payload);
+          if (payload.new && payload.new.items) {
+            const cloudTime = new Date(payload.new.updated_at).getTime();
+            const localTime = new Date(settings.lastSync || 0).getTime();
+            
+            // 只有当云端更新时间比本地新1秒以上才更新（避免自己的更新触发）
+            if (cloudTime > localTime + 1000) {
+              inventory = payload.new.items;
+              localStorage.setItem('home-inventory', JSON.stringify(inventory));
+              settings.lastSync = payload.new.updated_at;
+              saveSettings();
+              renderAll();
+              showToast('📱 已从其他设备同步');
+              document.getElementById('syncStatus').textContent = '⬇️ 刚刚同步';
+              document.getElementById('syncStatus').className = 'sync-status synced';
+            }
+          }
+        })
+        .subscribe((status) => {
+          console.log('Realtime status:', status);
+        });
+    }
+
+    // 自动保存到云端（防抖）
+    let cloudSaveTimeout = null;
+    function scheduleCloudSave() {
+      if (!supabaseClient) return;
+      clearTimeout(cloudSaveTimeout);
+      cloudSaveTimeout = setTimeout(() => {
+        syncCloud();
+      }, 3000); // 3秒后自动同步
     }
     // ========== 云同步功能结束 ==========
 
