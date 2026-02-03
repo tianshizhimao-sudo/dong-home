@@ -723,6 +723,16 @@
       <button class="btn btn-warning btn-large" onclick="generateShoppingList()">
         🛒 生成采买清单
       </button>
+      
+      <div id="appleExportSection" style="display: none; margin-bottom: 12px;">
+        <button class="btn btn-large" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53); width: 100%;" onclick="syncToApple()">
+          🍎 同步到 Apple Reminders + 日历
+        </button>
+        <p style="font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px;">
+          点击后下载脚本，在 Mac 上运行即可
+        </p>
+      </div>
+      
       <div class="section">
         <div class="section-title">
           <span>📝 需要购买</span>
@@ -1843,6 +1853,9 @@
     }
 
     // ========== 采买清单 ==========
+    // 全局存储采买清单
+    let currentShoppingList = [];
+    
     function generateShoppingList() {
       const needBuy = [];
       
@@ -1854,15 +1867,23 @@
         });
       });
       
+      // 保存到全局变量
+      currentShoppingList = needBuy;
+      
       const list = document.getElementById('shoppingList');
       const count = document.getElementById('shoppingCount');
+      const appleSection = document.getElementById('appleExportSection');
       
       count.textContent = needBuy.length;
       
       if (needBuy.length === 0) {
         list.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>库存充足，不需要采买！</p></div>';
+        appleSection.style.display = 'none';
         return;
       }
+      
+      // 显示 Apple 导出按钮
+      appleSection.style.display = 'block';
       
       // 按主分类排序
       needBuy.sort((a, b) => a.mainCat.localeCompare(b.mainCat));
@@ -1878,6 +1899,90 @@
       `).join('');
       
       showToast(`📋 生成了 ${needBuy.length} 项采买清单`);
+    }
+    
+    function syncToApple() {
+      if (currentShoppingList.length === 0) {
+        showToast('没有需要购买的物品', 'warning');
+        return;
+      }
+      
+      const today = new Date().toISOString().slice(0, 10);
+      const catNames = {
+        daily: '日用品',
+        food: '食材',
+        clothing: '衣物',
+        sports: '运动',
+        electronics: '电子'
+      };
+      
+      // 生成 shell 脚本
+      let script = `#!/bin/bash
+# 🛒 家庭采买清单 - ${today}
+# 自动生成，请在 Mac 上运行
+
+echo "🛒 正在同步采买清单到 Apple..."
+echo ""
+
+# ========== 1. 添加到 Apple Reminders ==========
+echo "📝 添加提醒事项..."
+
+# 确保有 Shopping 列表
+remindctl list Shopping --create 2>/dev/null || true
+
+`;
+      
+      // 按分类分组
+      const grouped = {};
+      currentShoppingList.forEach(item => {
+        const cat = catNames[item.mainCat] || '其他';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+      });
+      
+      // 添加每个物品到 Reminders
+      Object.entries(grouped).forEach(([cat, items]) => {
+        script += `# --- ${cat} ---\n`;
+        items.forEach(item => {
+          const title = `${item.name} (${item.need}${item.unit || '个'})`;
+          // 转义特殊字符
+          const escapedTitle = title.replace(/"/g, '\\"').replace(/\$/g, '\\$');
+          script += `remindctl add --title "${escapedTitle}" --list Shopping --due today\n`;
+        });
+        script += '\n';
+      });
+      
+      // 添加日历事件
+      script += `
+# ========== 2. 添加日历事件 ==========
+echo ""
+echo "📅 添加购物日历事件..."
+
+# 创建全天事件
+gog calendar create primary \\
+  --summary "🛒 购物日 - ${currentShoppingList.length}件待买" \\
+  --from "${today}T00:00:00" \\
+  --to "${today}T23:59:59" \\
+  --event-color 6
+
+echo ""
+echo "✅ 完成！"
+echo "   - ${currentShoppingList.length} 个提醒已添加到 Reminders → Shopping"
+echo "   - 1 个全天事件已添加到日历"
+echo ""
+echo "打开 Reminders 查看: open -a Reminders"
+`;
+      
+      // 下载脚本
+      const blob = new Blob([script], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shopping-sync-${today}.sh`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      showToast('📥 脚本已下载，请在 Mac 终端运行');
     }
 
     function toggleCheck(el) {
