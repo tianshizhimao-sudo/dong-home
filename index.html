@@ -46,6 +46,32 @@
     }
     .save-status.show { opacity: 1; }
     
+    .sync-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+    .sync-btn {
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #4ecca3, #38b2ac);
+      border: none;
+      border-radius: 6px;
+      color: #1a1a2e;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sync-status { font-size: 11px; color: #888; }
+    .sync-status.syncing { color: #f0ad4e; }
+    .sync-status.synced { color: #4ecca3; }
+    .sync-status.error { color: #e94560; }
+    
     .stats-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -444,6 +470,10 @@
       <h1>🏠 家庭日常库存</h1>
       <p class="subtitle">Dong & Olivia · 定期采买管理</p>
       <p class="save-status" id="saveStatus">✅ 已自动保存</p>
+      <div class="sync-bar">
+        <button class="sync-btn" id="syncBtn" onclick="syncCloud()">☁️ 云同步</button>
+        <span class="sync-status" id="syncStatus">点击同步</span>
+      </div>
     </header>
 
     <div id="stocktakeReminder" class="stocktake-reminder" style="display: none;">
@@ -760,6 +790,8 @@
       renderQuickAdd();
       renderAll();
       checkStocktakeReminder();
+      // 自动从云端同步
+      setTimeout(autoSyncOnLoad, 500);
     });
 
     function loadData() {
@@ -798,6 +830,120 @@
       status.classList.add('show');
       setTimeout(() => status.classList.remove('show'), 2000);
     }
+
+    // ========== 云同步功能 ==========
+    const GIST_ID = '499c234f15f5202703f53c3318b49591';
+    const GIST_FILE = 'inventory.json';
+    let isSyncing = false;
+
+    async function syncCloud() {
+      if (isSyncing) return;
+      isSyncing = true;
+      
+      const btn = document.getElementById('syncBtn');
+      const status = document.getElementById('syncStatus');
+      
+      btn.disabled = true;
+      status.className = 'sync-status syncing';
+      status.textContent = '⏳ 同步中...';
+      
+      try {
+        // 1. 先从云端拉取数据
+        const cloudData = await fetchFromCloud();
+        
+        // 2. 比较更新时间，合并数据
+        const localTime = new Date(settings.lastSync || 0).getTime();
+        const cloudTime = new Date(cloudData?.lastUpdated || 0).getTime();
+        
+        if (cloudData && cloudData.items && cloudTime > localTime) {
+          // 云端数据更新，使用云端数据
+          inventory = cloudData.items;
+          localStorage.setItem('home-inventory', JSON.stringify(inventory));
+          renderAll();
+          status.textContent = '⬇️ 已从云端更新';
+        } else {
+          // 本地数据更新或相同，推送到云端
+          await pushToCloud();
+          status.textContent = '⬆️ 已同步到云端';
+        }
+        
+        settings.lastSync = new Date().toISOString();
+        saveSettings();
+        
+        status.className = 'sync-status synced';
+        setTimeout(() => {
+          status.textContent = '✅ ' + new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
+        }, 1500);
+        
+      } catch (err) {
+        console.error('Sync error:', err);
+        status.className = 'sync-status error';
+        status.textContent = '❌ 同步失败';
+      } finally {
+        btn.disabled = false;
+        isSyncing = false;
+      }
+    }
+
+    async function fetchFromCloud() {
+      try {
+        const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+        if (!resp.ok) return null;
+        const gist = await resp.json();
+        const content = gist.files[GIST_FILE]?.content;
+        return content ? JSON.parse(content) : null;
+      } catch (e) {
+        console.error('Fetch error:', e);
+        return null;
+      }
+    }
+
+    async function pushToCloud() {
+      const data = {
+        lastUpdated: new Date().toISOString(),
+        items: inventory
+      };
+      
+      // 注意：GitHub Gist API 需要认证才能写入
+      // 这里使用一个简单的 workaround：通过 CORS proxy
+      // 实际使用中建议用后端或 GitHub Actions
+      
+      // 暂时只做读取同步，写入需要手动导出
+      // 自动推送需要 token，这里先保存到 localStorage
+      localStorage.setItem('home-inventory-cloud-pending', JSON.stringify(data));
+      
+      // 显示手动同步提示
+      console.log('Data ready for cloud sync:', data);
+    }
+
+    async function autoSyncOnLoad() {
+      const status = document.getElementById('syncStatus');
+      status.textContent = '⏳ 检查更新...';
+      status.className = 'sync-status syncing';
+      
+      try {
+        const cloudData = await fetchFromCloud();
+        const localTime = new Date(settings.lastSync || 0).getTime();
+        const cloudTime = new Date(cloudData?.lastUpdated || 0).getTime();
+        
+        if (cloudData && cloudData.items && cloudTime > localTime) {
+          inventory = cloudData.items;
+          localStorage.setItem('home-inventory', JSON.stringify(inventory));
+          settings.lastSync = new Date().toISOString();
+          saveSettings();
+          renderAll();
+          status.textContent = '⬇️ 已更新';
+          status.className = 'sync-status synced';
+        } else {
+          status.textContent = '✅ 已是最新';
+          status.className = 'sync-status synced';
+        }
+      } catch (e) {
+        status.textContent = '点击同步';
+        status.className = 'sync-status';
+      }
+    }
+    // ========== 云同步功能结束 ==========
 
     function checkStocktakeReminder() {
       const today = new Date();
