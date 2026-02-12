@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#1e3a5f">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%232ECC85'/%3E%3Cstop offset='100%25' style='stop-color:%231FAD73'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg transform='translate(50,50)'%3E%3Cpath d='M 0 -38 A 38 38 0 1 0 0 -37.99' fill='none' stroke='url(%23g)' stroke-width='8' stroke-linecap='round' stroke-dasharray='227 12'/%3E%3Cpath d='M0 -45 L0 -52' stroke='url(%23g)' stroke-width='6' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E"><text y='.9em' font-size='90'>🏠</text></svg>">
   <title>🏠 家庭库存中心</title>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
@@ -128,6 +128,7 @@
     .main-cat-card.clothing { border-left: 4px solid var(--purple); }
     .main-cat-card.sports { border-left: 4px solid var(--orange); }
     .main-cat-card.electronics { border-left: 4px solid var(--teal); }
+    .main-cat-card.supplements { border-left: 4px solid #10b981; }
 
     .back-btn {
       display: none;
@@ -176,6 +177,7 @@
       border-radius: 14px;
       padding: 16px;
       margin-bottom: 12px;
+      overflow: visible;
     }
     .section-title {
       font-size: 14px;
@@ -592,6 +594,11 @@
           <div class="name">电子产品</div>
           <div class="count" id="electronicsCount">0 件</div>
         </div>
+        <div class="main-cat-card supplements" onclick="openCategory('supplements')">
+          <div class="icon">⚡</div>
+          <div class="name">运动补给</div>
+          <div class="count" id="supplementsCount">0 件</div>
+        </div>
         <div class="main-cat-card" style="border-left: 4px solid var(--pink);" onclick="openCategory('shopping')">
           <div class="icon">🛒</div>
           <div class="name">采买清单</div>
@@ -717,6 +724,26 @@
       <div id="electronics-add" class="sub-tab-content"></div>
     </div>
 
+    <!-- 运动补给视图 -->
+    <div id="supplementsView" class="category-view">
+      <button class="back-btn show" onclick="goBack()">← 返回</button>
+      <h2 style="font-size: 18px; margin-bottom: 16px;">⚡ 运动补给</h2>
+      
+      <div class="tabs" id="supplementsTabs">
+        <button class="tab active" data-tab="energy" onclick="showSubTab('supplements', 'energy', this)">⚡ 能量胶</button>
+        <button class="tab" data-tab="electrolyte" onclick="showSubTab('supplements', 'electrolyte', this)">💊 电解质</button>
+        <button class="tab" data-tab="protein" onclick="showSubTab('supplements', 'protein', this)">🥤 蛋白</button>
+        <button class="tab" data-tab="hydration" onclick="showSubTab('supplements', 'hydration', this)">🧃 饮料</button>
+        <button class="tab" data-tab="add" onclick="showSubTab('supplements', 'add', this)">➕</button>
+      </div>
+
+      <div id="supplements-energy" class="sub-tab-content active"></div>
+      <div id="supplements-electrolyte" class="sub-tab-content"></div>
+      <div id="supplements-protein" class="sub-tab-content"></div>
+      <div id="supplements-hydration" class="sub-tab-content"></div>
+      <div id="supplements-add" class="sub-tab-content"></div>
+    </div>
+
     <!-- 采买清单视图 -->
     <div id="shoppingView" class="category-view">
       <button class="back-btn show" onclick="goBack()">← 返回</button>
@@ -726,7 +753,7 @@
       <div class="section" style="margin-bottom: 12px;">
         <div class="section-title">✏️ 临时添加</div>
         <div style="display: flex; gap: 8px;">
-          <input type="text" class="form-input" id="quickAddItem" placeholder="想买的东西..." style="flex: 1;">
+          <input type="text" class="form-input" id="quickAddItem" placeholder="想买的东西..." style="flex: 1; color: #eaeaea; background: #0f172a; -webkit-text-fill-color: #eaeaea; opacity: 1;">
           <button class="btn btn-primary" style="padding: 10px 16px;" onclick="addQuickItem()">+</button>
         </div>
         <div id="quickItemsList" style="margin-top: 10px;"></div>
@@ -750,7 +777,7 @@
           <span>📝 需要购买</span>
           <span class="section-badge" id="shoppingCount">0</span>
         </div>
-        <div id="shoppingList"></div>
+        <div id="shoppingList" style="max-height: none; overflow: visible;"></div>
       </div>
       <div style="display: flex; gap: 10px;">
         <button class="btn btn-success" style="flex: 1;" onclick="markAllBought()">✅ 全部买齐</button>
@@ -862,7 +889,7 @@
         }
       },
       sports: {
-        name: '运动',
+        name: '运动装备',
         icon: '🏃',
         subCategories: {
           running: { name: '跑步', icon: '🏃' },
@@ -880,6 +907,16 @@
           computer: { name: '电脑', icon: '💻' },
           home: { name: '智能家居', icon: '🏠' },
           accessories: { name: '配件', icon: '🔌' }
+        }
+      },
+      supplements: {
+        name: '运动补给',
+        icon: '⚡',
+        subCategories: {
+          energy: { name: '能量胶', icon: '⚡' },
+          electrolyte: { name: '电解质', icon: '💊' },
+          protein: { name: '蛋白/增肌', icon: '🥤' },
+          hydration: { name: '运动饮料', icon: '🧃' }
         }
       }
     };
@@ -1139,6 +1176,31 @@
         { name: '手机壳', subCat: 'accessories', qty: 0, suggest: 1, unit: '个', condition: 'good', icon: '📱' },
         { name: '屏幕保护膜', subCat: 'accessories', qty: 0, suggest: 2, unit: '张', condition: 'good', icon: '📱' },
         { name: 'SD 卡', subCat: 'accessories', qty: 0, suggest: 0, unit: '张', condition: 'good', icon: '💾' },
+      ],
+      supplements: [
+        // 能量胶
+        { name: 'GU能量胶', subCat: 'energy', qty: 0, suggest: 6, unit: '个', icon: '⚡' },
+        { name: 'SIS能量胶', subCat: 'energy', qty: 0, suggest: 6, unit: '个', icon: '⚡' },
+        { name: 'Maurten能量胶', subCat: 'energy', qty: 0, suggest: 4, unit: '个', icon: '⚡' },
+        { name: '能量棒', subCat: 'energy', qty: 0, suggest: 6, unit: '条', icon: '🍫' },
+        { name: '能量软糖', subCat: 'energy', qty: 0, suggest: 2, unit: '包', icon: '🍬' },
+        
+        // 电解质
+        { name: '盐丸 (SaltStick)', subCat: 'electrolyte', qty: 0, suggest: 30, unit: '粒', icon: '💊' },
+        { name: '电解质粉', subCat: 'electrolyte', qty: 0, suggest: 2, unit: '袋', icon: '💊' },
+        { name: 'Nuun泡腾片', subCat: 'electrolyte', qty: 0, suggest: 2, unit: '管', icon: '💊' },
+        { name: 'Hydralyte', subCat: 'electrolyte', qty: 0, suggest: 1, unit: '盒', icon: '💊' },
+        
+        // 蛋白/增肌
+        { name: '蛋白粉 (Whey)', subCat: 'protein', qty: 0, suggest: 1, unit: '桶', icon: '🥤' },
+        { name: 'BCAA', subCat: 'protein', qty: 0, suggest: 1, unit: '瓶', icon: '🥤' },
+        { name: '肌酸', subCat: 'protein', qty: 0, suggest: 1, unit: '瓶', icon: '🥤' },
+        { name: '蛋白棒', subCat: 'protein', qty: 0, suggest: 6, unit: '条', icon: '🍫' },
+        
+        // 运动饮料
+        { name: '佳得乐粉', subCat: 'hydration', qty: 0, suggest: 1, unit: '罐', icon: '🧃' },
+        { name: 'Powerade', subCat: 'hydration', qty: 0, suggest: 6, unit: '瓶', icon: '🧃' },
+        { name: '椰子水', subCat: 'hydration', qty: 0, suggest: 6, unit: '瓶', icon: '🥥' },
       ]
     };
 
@@ -1156,6 +1218,12 @@
       checkMonthlyDecrement(); // 检查月度自动减一
       renderAll();
       setTimeout(autoSyncOnLoad, 500);
+      
+      // 处理 URL hash 跳转到指定分类
+      const hash = window.location.hash.slice(1);
+      if (hash && MAIN_CATEGORIES[hash]) {
+        setTimeout(() => showCategory(hash), 100);
+      }
     });
 
     function loadData() {
@@ -2049,7 +2117,7 @@ echo ""
 echo "📝 添加提醒事项..."
 
 # 确保有 Shopping 列表
-remindctl list Shopping --create 2>/dev/null || true
+remindctl list "Family Shopping" --create 2>/dev/null || true
 
 `;
       
@@ -2058,7 +2126,7 @@ remindctl list Shopping --create 2>/dev/null || true
         script += `# --- 临时添加 ---\n`;
         quickItems.forEach(item => {
           const escapedTitle = item.replace(/"/g, '\\"').replace(/\$/g, '\\$');
-          script += `remindctl add --title "📝 ${escapedTitle}" --list Shopping --due today\n`;
+          script += `remindctl add --title "📝 ${escapedTitle}" --list "Family Shopping" --due today\n`;
         });
         script += '\n';
       }
@@ -2077,7 +2145,7 @@ remindctl list Shopping --create 2>/dev/null || true
         items.forEach(item => {
           const title = `${item.icon || '📦'} ${item.name} (${item.need}${item.unit || '个'})`;
           const escapedTitle = title.replace(/"/g, '\\"').replace(/\$/g, '\\$');
-          script += `remindctl add --title "${escapedTitle}" --list Shopping --due today\n`;
+          script += `remindctl add --title "${escapedTitle}" --list "Family Shopping" --due today\n`;
         });
         script += '\n';
       });
@@ -2097,7 +2165,7 @@ gog calendar create primary \\
 
 echo ""
 echo "✅ 完成！"
-echo "   - ${totalItems} 个提醒已添加到 Reminders → Shopping"
+echo "   - ${totalItems} 个提醒已添加到 Reminders → Family Shopping"
 echo "   - 1 个日历提醒已添加 (12:05 AM)"
 echo ""
 echo "打开 Reminders 查看: open -a Reminders"
