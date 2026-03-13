@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1A1A2E">
+  <title>🏠 家庭补货清单</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #1A1A2E; --card: #252540; --border: #3D3D5C;
+      --green: #2ECC85; --green-dark: #1FAD73;
+      --yellow: #f59e0b; --red: #ef4444;
+      --text: #EEEEF5; --muted: #8888A8;
+      --radius: 16px; --safe: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; padding-bottom: calc(80px + var(--safe)); -webkit-font-smoothing: antialiased; }
+
+    /* Header */
+    .header { padding: 52px 20px 16px; text-align: center; position: relative; }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header h1 span { color: var(--green); }
+    .header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .header-actions { position: absolute; top: 52px; right: 20px; display: flex; gap: 8px; }
+    .icon-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--card); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+    /* Stats bar */
+    .stats { display: flex; gap: 10px; padding: 0 20px 16px; }
+    .stat { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px; text-align: center; }
+    .stat .num { font-size: 22px; font-weight: 700; }
+    .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .stat.warn .num { color: var(--yellow); }
+    .stat.out .num { color: var(--red); }
+    .stat.ok .num { color: var(--green); }
+
+    /* Shopping list button */
+    .shop-btn { margin: 0 20px 20px; background: linear-gradient(135deg, var(--green), var(--green-dark)); color: #0d2818; border: none; border-radius: 14px; padding: 15px 20px; font-size: 15px; font-weight: 700; width: calc(100% - 40px); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s; }
+    .shop-btn:active { opacity: 0.8; }
+    .shop-btn.dim { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+
+    /* Category */
+    .category { margin: 0 20px 20px; }
+    .cat-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .cat-icon { font-size: 20px; }
+    .cat-name { font-size: 15px; font-weight: 600; flex: 1; }
+    .cat-count { font-size: 12px; color: var(--muted); background: var(--card); border-radius: 20px; padding: 3px 10px; }
+
+    /* Item */
+    .item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s; user-select: none; }
+    .item:active { opacity: 0.8; }
+    .item.warn { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.04); }
+    .item.out  { border-color: rgba(239,68,68,0.4);  background: rgba(239,68,68,0.04); }
+    .item.ok   { border-color: rgba(46,204,133,0.2); }
+    .item-icon { font-size: 22px; width: 32px; text-align: center; flex-shrink: 0; }
+    .item-info { flex: 1; min-width: 0; }
+    .item-name { font-size: 15px; font-weight: 500; }
+    .item-note { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .item-status { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .status-badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+    .status-badge.ok   { background: rgba(46,204,133,0.12); color: var(--green); }
+    .status-badge.warn { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .status-badge.out  { background: rgba(239,68,68,0.15);  color: var(--red); }
+
+    /* Add item */
+    .add-row { background: var(--card); border: 1.5px dashed var(--border); border-radius: 14px; padding: 13px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--muted); font-size: 14px; transition: border-color 0.15s; }
+    .add-row:active { border-color: var(--green); color: var(--green); }
+
+    /* Modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: flex-end; }
+    .overlay.open { display: flex; }
+    .sheet { background: var(--card); border-radius: 24px 24px 0 0; padding: 20px 20px calc(20px + var(--safe)); width: 100%; max-height: 85vh; overflow-y: auto; }
+    .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+    .sheet h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .sheet input, .sheet select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; color: var(--text); font-size: 16px; font-family: inherit; margin-bottom: 12px; }
+    .sheet input:focus, .sheet select:focus { outline: none; border-color: var(--green); }
+    .sheet-btns { display: flex; gap: 10px; margin-top: 8px; }
+    .sheet-btns button { flex: 1; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; }
+    .btn-cancel { background: var(--bg); color: var(--muted); border: 1px solid var(--border) !important; }
+    .btn-save { background: linear-gradient(135deg, var(--green), var(--green-dark)); color: #0d2818; }
+    .btn-del { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2) !important; margin-top: 8px; }
+
+    /* Shopping list modal */
+    .shop-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .shop-list-item:last-child { border-bottom: none; }
+    .shop-list-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot.warn { background: var(--yellow); }
+    .dot.out  { background: var(--red); }
+    .copy-btn { width: 100%; padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-size: 14px; font-family: inherit; cursor: pointer; margin-top: 16px; }
+    .copy-btn:active { border-color: var(--green); color: var(--green); }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .empty .e-icon { font-size: 40px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-actions">
+    <div class="icon-btn" onclick="openShop()" title="购物清单">🛒</div>
+  </div>
+  <h1>🏠 <span>家庭</span>补货清单</h1>
+  <p id="lastUpdated">点击物品切换状态</p>
+</div>
+
+<div class="stats">
+  <div class="stat ok"><div class="num" id="statOk">0</div><div class="lbl">充足</div></div>
+  <div class="stat warn"><div class="num" id="statWarn">0</div><div class="lbl">快用完</div></div>
+  <div class="stat out"><div class="num" id="statOut">0</div><div class="lbl">没了</div></div>
+</div>
+
+<button class="shop-btn" id="shopBtnMain" onclick="openShop()">🛒 生成购物清单</button>
+
+<div id="categoriesEl"></div>
+
+<!-- Add Item Sheet -->
+<div class="overlay" id="addOverlay" onclick="closeAdd(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3 id="addTitle">添加物品</h3>
+    <input type="text" id="addName" placeholder="物品名称（如：橄榄油）" maxlength="30">
+    <input type="text" id="addNote" placeholder="备注（如：每月用1瓶）" maxlength="40">
+    <input type="text" id="addEmoji" placeholder="图标 emoji（如：🫒）" maxlength="2">
+    <select id="addCat"></select>
+    <div class="sheet-btns">
+      <button class="btn-cancel" onclick="closeAdd()">取消</button>
+      <button class="btn-save" onclick="saveItem()">保存</button>
+    </div>
+    <button class="btn-del" id="deleteBtn" style="display:none;width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid rgba(239,68,68,0.2)" onclick="deleteItem()">🗑 删除物品</button>
+  </div>
+</div>
+
+<!-- Shopping List Sheet -->
+<div class="overlay" id="shopOverlay" onclick="closeShop(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>🛒 购物清单</h3>
+    <div id="shopListEl"></div>
+    <button class="copy-btn" onclick="copyList()">📋 复制清单文字</button>
+    <div class="sheet-btns" style="margin-top:10px">
+      <button class="btn-cancel" onclick="closeShop()">关闭</button>
+      <button class="btn-save" onclick="markAllBought()">✅ 全部买到了</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_DATA = {
+  categories: [
+    { id: 'oli', name: 'Olivia 康复补给', icon: '💊' },
+    { id: 'bathroom', name: '卫生间', icon: '🧴' },
+    { id: 'kitchen', name: '厨房基本款', icon: '🍚' },
+    { id: 'cleaning', name: '家居清洁', icon: '🧹' },
+  ],
+  items: [
+    // Olivia recovery
+    { id:'i1', cat:'oli', name:'Vitamin D', note:'Olivia 每天1颗', emoji:'☀️', status:'ok' },
+    { id:'i2', cat:'oli', name:'甲状腺药', note:'遵医嘱', emoji:'💉', status:'ok' },
+    { id:'i3', cat:'oli', name:'鱼油 / Omega-3', note:'', emoji:'🐟', status:'ok' },
+    { id:'i4', cat:'oli', name:'益生菌', note:'', emoji:'🦠', status:'ok' },
+    // Bathroom
+    { id:'i5', cat:'bathroom', name:'洗发水', note:'', emoji:'🧴', status:'ok' },
+    { id:'i6', cat:'bathroom', name:'沐浴露', note:'', emoji:'🚿', status:'ok' },
+    { id:'i7', cat:'bathroom', name:'牙膏', note:'', emoji:'🪥', status:'ok' },
+    { id:'i8', cat:'bathroom', name:'厕纸', note:'买12卷装', emoji:'🧻', status:'ok' },
+    // Kitchen
+    { id:'i9', cat:'kitchen', name:'米', note:'', emoji:'🍚', status:'ok' },
+    { id:'i10', cat:'kitchen', name:'橄榄油', note:'', emoji:'🫒', status:'ok' },
+    { id:'i11', cat:'kitchen', name:'鸡蛋', note:'', emoji:'🥚', status:'ok' },
+    { id:'i12', cat:'kitchen', name:'酱油', note:'', emoji:'🫙', status:'ok' },
+    // Cleaning
+    { id:'i13', cat:'cleaning', name:'洗碗液', note:'', emoji:'🧽', status:'ok' },
+    { id:'i14', cat:'cleaning', name:'洗衣液', note:'', emoji:'👕', status:'ok' },
+    { id:'i15', cat:'cleaning', name:'垃圾袋', note:'大中各一', emoji:'🗑️', status:'ok' },
+  ]
+};
+
+let data = JSON.parse(localStorage.getItem('home-inventory-v2') || 'null') || JSON.parse(JSON.stringify(DEFAULT_DATA));
+let editingId = null;
+
+const STATUS = {
+  ok:   { label: '✓ 充足',  next: 'warn' },
+  warn: { label: '⚠ 快用完', next: 'out'  },
+  out:  { label: '✕ 没了',  next: 'ok'   },
+};
+
+function save() {
+  localStorage.setItem('home-inventory-v2', JSON.stringify(data));
+  updateStats();
+  updateShopBtn();
+  updateTimestamp();
+}
+
+function updateStats() {
+  const counts = { ok: 0, warn: 0, out: 0 };
+  data.items.forEach(i => counts[i.status]++);
+  document.getElementById('statOk').textContent = counts.ok;
+  document.getElementById('statWarn').textContent = counts.warn;
+  document.getElementById('statOut').textContent = counts.out;
+}
+
+function updateShopBtn() {
+  const needBuy = data.items.filter(i => i.status !== 'ok').length;
+  const btn = document.getElementById('shopBtnMain');
+  if (needBuy === 0) {
+    btn.className = 'shop-btn dim';
+    btn.textContent = '✅ 全部充足，暂不需要购物';
+  } else {
+    btn.className = 'shop-btn';
+    btn.innerHTML = `🛒 购物清单（${needBuy} 件需购买）`;
+  }
+}
+
+function updateTimestamp() {
+  const now = new Date();
+  document.getElementById('lastUpdated').textContent = `上次更新 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+function render() {
+  const el = document.getElementById('categoriesEl');
+  el.innerHTML = '';
+  data.categories.forEach(cat => {
+    const items = data.items.filter(i => i.cat === cat.id);
+    const needBuy = items.filter(i => i.status !== 'ok').length;
+    const div = document.createElement('div');
+    div.className = 'category';
+    div.innerHTML = `
+      <div class="cat-header">
+        <span class="cat-icon">${cat.icon}</span>
+        <span class="cat-name">${cat.name}</span>
+        ${needBuy > 0 ? `<span class="cat-count" style="background:rgba(245,158,11,0.15);color:var(--yellow)">${needBuy} 件需购</span>` : `<span class="cat-count">${items.length} 件</span>`}
+      </div>
+      ${items.map(item => `
+        <div class="item ${item.status}" onclick="toggleStatus('${item.id}')" onlongpress="openEdit('${item.id}')">
+          <span class="item-icon">${item.emoji || '📦'}</span>
+          <div class="item-info">
+            <div class="item-name">${item.name}</div>
+            ${item.note ? `<div class="item-note">${item.note}</div>` : ''}
+          </div>
+          <div class="item-status">
+            <span class="status-badge ${item.status}">${STATUS[item.status].label}</span>
+          </div>
+        </div>
+      `).join('')}
+      <div class="add-row" onclick="openAdd('${cat.id}')">
+        <span>＋</span><span>添加物品</span>
+      </div>
+    `;
+    // Long press support
+    items.forEach(item => {
+      const el2 = div.querySelector(`[onclick="toggleStatus('${item.id}')"]`);
+      if (el2) {
+        let timer;
+        el2.addEventListener('touchstart', () => { timer = setTimeout(() => openEdit(item.id), 600); });
+        el2.addEventListener('touchend', () => clearTimeout(timer));
+        el2.addEventListener('touchmove', () => clearTimeout(timer));
+      }
+    });
+    el.appendChild(div);
+  });
+  updateStats();
+  updateShopBtn();
+}
+
+function toggleStatus(id) {
+  const item = data.items.find(i => i.id === id);
+  if (!item) return;
+  item.status = STATUS[item.status].next;
+  save();
+  render();
+}
+
+// Add/Edit
+function openAdd(catId) {
+  editingId = null;
+  document.getElementById('addTitle').textContent = '添加物品';
+  document.getElementById('addName').value = '';
+  document.getElementById('addNote').value = '';
+  document.getElementById('addEmoji').value = '';
+  document.getElementById('deleteBtn').style.display = 'none';
+  populateCatSelect(catId);
+  document.getElementById('addOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('addName').focus(), 300);
+}
+
+function openEdit(id) {
+  const item = data.items.find(i => i.id === id);
+  if (!item) return;
+  editingId = id;
+  document.getElementById('addTitle').textContent = '编辑物品';
+  document.getElementById('addName').value = item.name;
+  document.getElementById('addNote').value = item.note || '';
+  document.getElementById('addEmoji').value = item.emoji || '';
+  document.getElementById('deleteBtn').style.display = 'block';
+  populateCatSelect(item.cat);
+  document.getElementById('addOverlay').classList.add('open');
+}
+
+function populateCatSelect(selectedCat) {
+  const sel = document.getElementById('addCat');
+  sel.innerHTML = data.categories.map(c =>
+    `<option value="${c.id}" ${c.id === selectedCat ? 'selected' : ''}>${c.icon} ${c.name}</option>`
+  ).join('');
+}
+
+function saveItem() {
+  const name = document.getElementById('addName').value.trim();
+  if (!name) return;
+  const cat = document.getElementById('addCat').value;
+  const note = document.getElementById('addNote').value.trim();
+  const emoji = document.getElementById('addEmoji').value.trim() || '📦';
+  if (editingId) {
+    const item = data.items.find(i => i.id === editingId);
+    if (item) { item.name = name; item.cat = cat; item.note = note; item.emoji = emoji; }
+  } else {
+    data.items.push({ id: 'i' + Date.now(), cat, name, note, emoji, status: 'ok' });
+  }
+  save(); render(); closeAdd();
+}
+
+function deleteItem() {
+  if (!editingId) return;
+  if (!confirm('确定删除？')) return;
+  data.items = data.items.filter(i => i.id !== editingId);
+  save(); render(); closeAdd();
+}
+
+function closeAdd(e) {
+  if (e && e.target !== document.getElementById('addOverlay')) return;
+  document.getElementById('addOverlay').classList.remove('open');
+  editingId = null;
+}
+
+// Shopping list
+function openShop() {
+  const needBuy = data.items.filter(i => i.status !== 'ok');
+  const el = document.getElementById('shopListEl');
+  if (needBuy.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="e-icon">🎉</div><div>全部充足，暂不需要购物！</div></div>';
+  } else {
+    el.innerHTML = needBuy.map(item => {
+      const cat = data.categories.find(c => c.id === item.cat);
+      return `<div class="shop-list-item">
+        <div class="dot ${item.status}"></div>
+        <span style="font-size:18px">${item.emoji || '📦'}</span>
+        <div style="flex:1">
+          <div style="font-weight:600">${item.name}</div>
+          <div style="font-size:12px;color:var(--muted)">${cat ? cat.icon + ' ' + cat.name : ''} ${item.note ? '· ' + item.note : ''}</div>
+        </div>
+        <span class="status-badge ${item.status}">${item.status === 'out' ? '没了' : '快用完'}</span>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('shopOverlay').classList.add('open');
+}
+
+function closeShop(e) {
+  if (e && e.target !== document.getElementById('shopOverlay')) return;
+  document.getElementById('shopOverlay').classList.remove('open');
+}
+
+function copyList() {
+  const needBuy = data.items.filter(i => i.status !== 'ok');
+  if (needBuy.length === 0) { alert('清单为空'); return; }
+  const text = '🛒 购物清单\n' + needBuy.map(i => `• ${i.emoji || ''} ${i.name}${i.note ? ' (' + i.note + ')' : ''}`).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ 已复制！';
+    setTimeout(() => btn.textContent = '📋 复制清单文字', 2000);
+  });
+}
+
+function markAllBought() {
+  data.items.forEach(i => { if (i.status !== 'ok') i.status = 'ok'; });
+  save(); render(); closeShop();
+}
+
+// Enter key in modal
+document.getElementById('addName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); saveItem(); }
+});
+
+// Init
+render();
+updateTimestamp();
+</script>
+</body>
+</html>
